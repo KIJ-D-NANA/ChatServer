@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -12,17 +13,26 @@ typedef struct Client{
     struct Client* Previous;
 }Client;
 
+Client* head;
+Client* tail;
+
 void* SomeAwesomeThings(void* Param){
     Client* theClient = (Client*)Param;
     char buffer[256];
     char message[2048];
+    char sendMessage[2048];
+    char* receiver;
+    char* tmp;
+    Client* ClientCounter;
 
     memset(buffer, '\0', sizeof(buffer));
     memset(message, '\0', sizeof(message));
+    memset(sendMessage, '\0', sizeof(sendMessage));
 
     int msgSize;
     while(1){
-        while((msgSize = readv(theClient->sockfd, buffer, sizeof(buffer) - 1)) > 0){
+        message[0] = '\0';
+        while((msgSize = read(theClient->sockfd, buffer, sizeof(buffer) - 1)) > 0){
             buffer[msgSize] = '\0';
             strcat(message, buffer);
         }
@@ -32,6 +42,47 @@ void* SomeAwesomeThings(void* Param){
         }
         else{
             //Do things here
+            tmp = strstr(message, "\r\n");
+            *tmp = '\0';
+            if(strcmp(message, "Mode: Public") == 0){
+
+                tmp = tmp + 2;
+                sprintf(sendMessage,"%s\r\nUser: %s\r\n%s", message, theClient->Name, tmp);
+
+                for(ClientCounter = head; ClientCounter != NULL; ClientCounter = ClientCounter->Next){
+                    if(ClientCounter == theClient) continue;
+                    write(ClientCounter->sockfd, sendMessage, sizeof(sendMessage));
+                }
+            }
+            else if(strcmp(message, "Mode: Private") == 0){
+
+                tmp = tmp + 2;
+                tmp = strstr(tmp, " ") + 1;
+                receiver = tmp;
+                tmp = strstr(tmp, "\r\n");
+                *tmp = '\0';
+                tmp = tmp + 2;
+
+                sprintf(sendMessage,"%s\r\nUser: %s\r\n%s", message, theClient->Name, tmp);
+
+                for(ClientCounter = head; ClientCounter != NULL; ClientCounter = ClientCounter->Next){
+                    if(strcmp(receiver, ClientCounter->Name) == 0){
+                        write(ClientCounter->sockfd, sendMessage, sizeof(sendMessage));
+                        break;
+                    }
+                }
+            }
+            else if(strcmp(message, "Mode: GetList") == 0){
+                sprintf(sendMessage, "Mode: List\r\n");
+                for(ClientCounter = head; ClientCounter != NULL; ClientCounter = ClientCounter->Next){
+                    if(ClientCounter == theClient)continue;
+                    strcat(sendMessage, ClientCounter->Name);
+                    strcat(sendMessage, "\r\n");
+                }
+                strcat(sendMessage, "\r\n.\r\n");
+
+                write(theClient->sockfd, sendMessage, sizeof(sendMessage));
+            }
         }
     }
 
@@ -46,9 +97,6 @@ void* SomeAwesomeThings(void* Param){
     return NULL;
 }
 
-Client* head;
-Client* tail;
-
 int main(int argc, char **argv)
 {
     int portNum;
@@ -57,6 +105,8 @@ int main(int argc, char **argv)
     char name[256];
 
     int msgSize;
+    int nameLength;
+    int i;
 
     head = tail = NULL;
 
@@ -78,7 +128,7 @@ int main(int argc, char **argv)
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(portNum);
 
-    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(sockaddr));
+    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(struct sockaddr));
 
     if(listen(listenfd, 10) == -1){
         printf("Failed to listen");
@@ -90,11 +140,18 @@ int main(int argc, char **argv)
         Client* newClient = (Client*) malloc(sizeof(Client));
         newClient->sockfd = connfd;
 
-        while((msgSize = readv(connfd, buffer, sizeof(buffer) - 1)) > 0){
+        while((msgSize = read(connfd, buffer, sizeof(buffer) - 1)) > 0){
             buffer[msgSize] = '\0';
             strcat(name, buffer);
         }
-        strcpy(newClient->Name, name);
+        nameLength = strstr(name, "\r\n.\r\n") - name;
+
+        for(i = 0; i < nameLength; i++){
+            newClient->Name[i] = name[i];
+        }
+
+        newClient->Name[nameLength] = '\0';
+
         name[0] = '\0';
 
         if(head == NULL){
