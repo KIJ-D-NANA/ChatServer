@@ -24,20 +24,33 @@ void* SomeAwesomeThings(void* Param){
     char* receiver;
     char* tmp;
     Client* ClientCounter;
+    int msgSize;
 
     memset(buffer, '\0', sizeof(buffer));
     memset(message, '\0', sizeof(message));
     memset(sendMessage, '\0', sizeof(sendMessage));
 
-    int msgSize;
+
+    if((msgSize = read(connfd, message, sizeof(message) - 1) > 0)){
+        message[msgSize] = '\0';
+        int nameLength = strstr(message, "\r\n.\r\n") - message;
+        for(msgSize = 0; msgSize < nameLength; msgSize++){
+            theClient->Name[msgSize] = message[msgSize];
+        }
+        theClient->Name[nameLength] = '\0';
+        printf("%s has connected\n", theClient->Name);
+    }
+
+
     while(1){
         message[0] = '\0';
         while((msgSize = read(theClient->sockfd, buffer, sizeof(buffer) - 1)) > 0){
             buffer[msgSize] = '\0';
             strcat(message, buffer);
         }
+
         if(msgSize == -1){
-            printf("%s is disconnected\n", theClient->Name);
+            printf("%s has been disconnected\n", theClient->Name);
             break;
         }
         else{
@@ -101,17 +114,8 @@ int main(int argc, char **argv)
 {
     int portNum;
     int listenfd = 0, connfd = 0;
-    char buffer[50];
-    char name[256];
-
-    int msgSize;
-    int nameLength;
-    int i;
 
     head = tail = NULL;
-
-    memset(buffer, '\0', sizeof(buffer));
-    memset(name, '\0', sizeof(name));
 
     if(argc > 2){
         portNum = atoi(argv[2]);
@@ -121,6 +125,10 @@ int main(int argc, char **argv)
     }
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    if(listenfd == -1){
+        printf("Socket retrival failed\n");
+        return -1;
+    }
     printf("Socket retrival success\n");
 
     struct sockaddr_in serv_addr;
@@ -128,7 +136,10 @@ int main(int argc, char **argv)
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(portNum);
 
-    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(struct sockaddr));
+    if(bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(struct sockaddr)) == -1){
+        printf("Failed to bind port\n");
+        return -1;
+    }
 
     if(listen(listenfd, 10) == -1){
         printf("Failed to listen");
@@ -137,22 +148,9 @@ int main(int argc, char **argv)
 
     while(1){
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
+        printf("New user has connected\n");
         Client* newClient = (Client*) malloc(sizeof(Client));
         newClient->sockfd = connfd;
-
-        while((msgSize = read(connfd, buffer, sizeof(buffer) - 1)) > 0){
-            buffer[msgSize] = '\0';
-            strcat(name, buffer);
-        }
-        nameLength = strstr(name, "\r\n.\r\n") - name;
-
-        for(i = 0; i < nameLength; i++){
-            newClient->Name[i] = name[i];
-        }
-
-        newClient->Name[nameLength] = '\0';
-
-        name[0] = '\0';
 
         if(head == NULL){
             head = newClient;
