@@ -101,9 +101,13 @@ void* SomeAwesomeThings(void* Param){
 
     if(theClient == head){
         head = theClient->Next;
+        head->Previous = NULL;
     }
     else{
         theClient->Previous->Next = theClient->Next;
+        if(theClient == tail){
+            tail = theClient->Previous;
+        }
     }
     free(theClient);
 
