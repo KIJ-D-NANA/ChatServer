@@ -18,90 +18,93 @@ Client* tail;
 
 void* SomeAwesomeThings(void* Param){
     Client* theClient = (Client*)Param;
-    char buffer[256];
     char message[2048];
     char sendMessage[2048];
     char* receiver;
     char* tmp;
     Client* ClientCounter;
     int msgSize;
+    int usernameSet = 0;
+    int nameLength;
 
-    memset(buffer, '\0', sizeof(buffer));
-    memset(message, '\0', sizeof(message));
     memset(sendMessage, '\0', sizeof(sendMessage));
 
 
-    if((msgSize = read(connfd, message, sizeof(message) - 1) > 0)){
+//    if((msgSize = read(theClient->sockfd, message, sizeof(message) - 1)) > 0){
+//        message[msgSize] = '\0';
+//        int nameLength = strstr(message, "\r\n.\r\n") - message;
+//        for(msgSize = 0; msgSize < nameLength; msgSize++){
+//            theClient->Name[msgSize] = message[msgSize];
+//        }
+//        theClient->Name[nameLength] = '\0';
+//        printf("%s has connected\n", theClient->Name);
+//    }
+
+
+    while((msgSize = read(theClient->sockfd, message, sizeof(message) - 1)) > 0){
+
         message[msgSize] = '\0';
-        int nameLength = strstr(message, "\r\n.\r\n") - message;
-        for(msgSize = 0; msgSize < nameLength; msgSize++){
-            theClient->Name[msgSize] = message[msgSize];
-        }
-        theClient->Name[nameLength] = '\0';
-        printf("%s has connected\n", theClient->Name);
-    }
+        printf("%s", message);
 
+        //Do things here
+        tmp = strstr(message, "\r\n");
+        *tmp = '\0';
+        if(strcmp(message, "Mode: Public") == 0){
 
-    while(1){
-        message[0] = '\0';
-        while((msgSize = read(theClient->sockfd, buffer, sizeof(buffer) - 1)) > 0){
-            buffer[msgSize] = '\0';
-            strcat(message, buffer);
-        }
+            tmp = tmp + 2;
+            sprintf(sendMessage,"%s\r\nUser: %s\r\n%s", message, theClient->Name, tmp);
 
-        if(msgSize == -1){
-            printf("%s has been disconnected\n", theClient->Name);
-            break;
+            for(ClientCounter = head; ClientCounter != NULL; ClientCounter = ClientCounter->Next){
+                if(ClientCounter == theClient) continue;
+                write(ClientCounter->sockfd, sendMessage, sizeof(sendMessage));
+            }
         }
-        else{
-            //Do things here
-            tmp = strstr(message, "\r\n");
+        else if(strcmp(message, "Mode: Private") == 0){
+
+            tmp = tmp + 2;
+            tmp = strstr(tmp, " ") + 1;
+            receiver = tmp;
+            tmp = strstr(tmp, "\r\n");
             *tmp = '\0';
-            if(strcmp(message, "Mode: Public") == 0){
+            tmp = tmp + 2;
 
-                tmp = tmp + 2;
-                sprintf(sendMessage,"%s\r\nUser: %s\r\n%s", message, theClient->Name, tmp);
+            sprintf(sendMessage,"%s\r\nUser: %s\r\n%s", message, theClient->Name, tmp);
 
-                for(ClientCounter = head; ClientCounter != NULL; ClientCounter = ClientCounter->Next){
-                    if(ClientCounter == theClient) continue;
+            for(ClientCounter = head; ClientCounter != NULL; ClientCounter = ClientCounter->Next){
+                if(strcmp(receiver, ClientCounter->Name) == 0){
                     write(ClientCounter->sockfd, sendMessage, sizeof(sendMessage));
+                    break;
                 }
             }
-            else if(strcmp(message, "Mode: Private") == 0){
-
-                tmp = tmp + 2;
-                tmp = strstr(tmp, " ") + 1;
-                receiver = tmp;
-                tmp = strstr(tmp, "\r\n");
-                *tmp = '\0';
-                tmp = tmp + 2;
-
-                sprintf(sendMessage,"%s\r\nUser: %s\r\n%s", message, theClient->Name, tmp);
-
-                for(ClientCounter = head; ClientCounter != NULL; ClientCounter = ClientCounter->Next){
-                    if(strcmp(receiver, ClientCounter->Name) == 0){
-                        write(ClientCounter->sockfd, sendMessage, sizeof(sendMessage));
-                        break;
-                    }
-                }
+        }
+        else if(strcmp(message, "Mode: GetList") == 0){
+            sprintf(sendMessage, "Mode: List\r\n");
+            for(ClientCounter = head; ClientCounter != NULL; ClientCounter = ClientCounter->Next){
+                if(ClientCounter == theClient)continue;
+                strcat(sendMessage, ClientCounter->Name);
+                strcat(sendMessage, "\r\n");
             }
-            else if(strcmp(message, "Mode: GetList") == 0){
-                sprintf(sendMessage, "Mode: List\r\n");
-                for(ClientCounter = head; ClientCounter != NULL; ClientCounter = ClientCounter->Next){
-                    if(ClientCounter == theClient)continue;
-                    strcat(sendMessage, ClientCounter->Name);
-                    strcat(sendMessage, "\r\n");
-                }
-                strcat(sendMessage, "\r\n.\r\n");
+            strcat(sendMessage, "\r\n.\r\n");
 
-                write(theClient->sockfd, sendMessage, sizeof(sendMessage));
+            write(theClient->sockfd, sendMessage, sizeof(sendMessage));
+        }
+        else if(strcmp(message, "Mode: Username")){
+            tmp = tmp + 2;
+            if(usernameSet == 0){
+                nameLength = strstr(tmp, "\r\n.\r\n") - tmp;
+                for(msgSize = 0; msgSize < nameLength; msgSize++){
+                    theClient->Name[msgSize] = tmp + msgSize;
+                }
+                theClient->Name[nameLength] = '\0';
+                usernameSet++;
             }
         }
     }
 
+    printf("%s has been disconnected\n", theClient->Name);
     if(theClient == head){
         head = theClient->Next;
-        head->Previous = NULL;
+        if(head != NULL)head->Previous = NULL;
     }
     else{
         theClient->Previous->Next = theClient->Next;
