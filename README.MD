@@ -7,11 +7,15 @@ How to use it :<br>
 1. you must have the GNU C/C++ Compiler.<br>
 2. you must have the POSIX thread library (because this program using thread to work).<br>
 3. compile the main.c file using this command below on your UNIX Operating System's terminal.<br>
-
+    
     gcc main.c -o [object's name] -lpthread
+
+4.  Run it! You dont know how to run it? Its easy! Just follow this command line below <br>
     
-4. Run it! You dont know how to run it? Its easy! Just follow this command line below <br>
+     ./[object's name] <br>
     
-    ./[object's name] <br>
+5.  Done <br>
     
-5. Done <br>
+    
+   
+    
