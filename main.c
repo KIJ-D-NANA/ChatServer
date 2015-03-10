@@ -88,14 +88,16 @@ void* SomeAwesomeThings(void* Param){
 
             write(theClient->sockfd, sendMessage, sizeof(sendMessage));
         }
-        else if(strcmp(message, "Mode: Username")){
+        else if(strcmp(message, "Mode: Username") == 0){
             tmp = tmp + 2;
             if(usernameSet == 0){
+                printf("Setting username\n");
                 nameLength = strstr(tmp, "\r\n.\r\n") - tmp;
                 for(msgSize = 0; msgSize < nameLength; msgSize++){
-                    theClient->Name[msgSize] = tmp + msgSize;
+                    theClient->Name[msgSize] = *(tmp + msgSize);
                 }
                 theClient->Name[nameLength] = '\0';
+                printf("%s\n", theClient->Name);
                 usernameSet++;
             }
         }
