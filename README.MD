@@ -12,6 +12,6 @@ How to use it :<br>
     
 4. Run it! You dont know how to run it? Its easy! Just follow this command line below <br>
     
-    ./[object's name]
+    ./[object's name] <br>
     
-5. Done
+5. Done <br>
