@@ -10,3 +10,8 @@ How to use it :<br>
 
     gcc main.c -o [object's name] -lpthread
     
+4. Run it! You dont know how to run it? Its easy! Just follow this command line below <br>
+    
+    ./[object's name]
+    
+5. Done
