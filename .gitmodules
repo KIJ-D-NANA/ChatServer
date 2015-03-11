@@ -1,0 +1,9 @@
+[submodule "Chat-Client-Web"]
+	path = Chat-Client-Web
+	url = https://github.com/KIJ-D-NANA/Chat-Client-Web.git
+[submodule "Chat-Client-Qt"]
+	path = Chat-Client-Qt
+	url = https://github.com/KIJ-D-NANA/Chat-Client-Qt.git
+[submodule "Chat-Documentation"]
+	path = Chat-Documentation
+	url = https://github.com/KIJ-D-NANA/Chat-Documentation.git
