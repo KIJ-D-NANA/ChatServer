@@ -16,6 +16,7 @@
 typedef struct Client{
     char Name[256];
     int sockfd;
+	char* public_key;
     struct Client* Next;
     struct Client* Previous;
 }Client;
@@ -30,17 +31,20 @@ void InitRSA();
 
 void* SomeAwesomeThings(void* Param){
     Client* theClient = (Client*)Param;
-    char message[2048];
-    char sendMessage[2048];
+    char message[4086];
+    char sendMessage[4086];
     char* receiver;
     char* tmp;
+	char* err;
     Client* ClientCounter;
     int msgSize;
     int usernameSet = 0;
     int nameLength;
+	int decrypt_len;
+	int encrypt_len;
 
     memset(sendMessage, '\0', sizeof(sendMessage));
-
+	err = (char*) malloc(130);
 
 //    if((msgSize = read(theClient->sockfd, message, sizeof(message) - 1)) > 0){
 //        message[msgSize] = '\0';
@@ -113,6 +117,25 @@ void* SomeAwesomeThings(void* Param){
                 usernameSet++;
             }
         }
+		else if(strcmp(message, "Mode: GetCA") == 0){
+			sprintf(sendMessage, "Mode: ServCA\r\n");
+			strcat(sendMessage, public_key);
+			strcat(sendMessage, "\r\n.\r\n");
+
+			write(theClient->sockfd, sendMessage, sizeof(sendMessage));
+		}
+		else if(strcmp(message, "Mode: ClientPubKey") == 0){
+			tmp = tmp + 2;
+			nameLength = strstr(tmp, "\r\n.\r\n") - tmp;
+			if((decrypt_len = RSA_private_decrypt(nameLength, (unsigned char*)tmp, (unsigned char*)theClient->public_key, keypair, RSA_PKCS1_OAEP_PADDING)) == -1){
+				ERR_load_crypto_strings();
+				ERR_error_string(ERR_get_error(), err);
+				fprintf(stderr, "Error decrypting message: %s\n", err);
+			}
+			else{
+				theClient->public_key[decrypt_len] = '\0';
+			}
+		}
     }
 
     printf("%s has been disconnected\n", theClient->Name);
@@ -173,10 +196,11 @@ int main(int argc, char **argv)
         printf("New user has connected\n");
         Client* newClient = (Client*) malloc(sizeof(Client));
         newClient->sockfd = connfd;
+		newClient->public_key_encrypted = NULL;
 
         if(head == NULL){
             head = newClient;
-            newClient->Previous = NULL;
+			newClient->Previous = (char*) malloc(RSA_size(keypair));
         }
         else{
             tail->Next = newClient;
