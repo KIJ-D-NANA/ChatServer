@@ -5,6 +5,13 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <pthread.h>
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
+#include <openssl/err.h>
+
+#define KEY_LENGTH 2048
+#define PUB_EXP 3
+#define PRINT_KEYS
 
 typedef struct Client{
     char Name[256];
@@ -15,6 +22,11 @@ typedef struct Client{
 
 Client* head;
 Client* tail;
+RSA *keypair;
+char *public_key;
+size_t public_len;
+
+void InitRSA();
 
 void* SomeAwesomeThings(void* Param){
     Client* theClient = (Client*)Param;
@@ -121,7 +133,8 @@ void* SomeAwesomeThings(void* Param){
 
 int main(int argc, char **argv)
 {
-    int portNum;
+	InitRSA();
+	int portNum;
     int listenfd = 0, connfd = 0;
 
     head = tail = NULL;
@@ -175,7 +188,50 @@ int main(int argc, char **argv)
         pthread_t clientThread;
         pthread_create(&clientThread, NULL, SomeAwesomeThings, (void*)newClient);
     }
+	RSA_free(keypair);
+	free(public_key);
 
     return 0;
 }
 
+void InitRSA(){
+	//Generating RSA key
+	size_t pri_len;
+	size_t pub_len;
+	char *pri_key;
+	char *pub_key;
+	char *err;
+	printf("Generating RSA (%d bits) keypair...\n", KEY_LENGTH);
+	fflush(stdout);
+	keypair = RSA_generate_key_ex(KEY_LENGTH, PUB_EXP, NULL, NULL);
+
+	// To get C-string PEM form
+	BIO *pri = BIO_new(BIO_s_mem());
+	BIO *pub = BIO_new(BIO_s_mem());
+
+	PEM_write_bio_RSAPrivateKey(pri, keypair, NULL, NULL, 0, NULL, NULL);
+	PEM_write_bio_RSAPublicKey(pub, keypair);
+
+	pri_len = BIO_pending(pri);
+	pub_len = BIO_pending(pub);
+
+	pri_key = (char*) malloc(pri_len + 1);
+	pub_key = (char*) malloc(pub_len + 1);
+
+	BIO_read(pri, pri_key, pri_len);
+	BIO_read(pub, pub_key, pub_len);
+
+	pri_key[pri_len] = '\0';
+	pub_key[pub_len] = '\0';
+	public_key = pub_key;
+	public_len = pub_len;
+
+	#ifdef PRINT_KEYS
+		printf("%s\n%s\n", pri_key, pub_key);
+	#endif
+	printf("done.\n");
+	BIO_free_all(pri);
+	BIO_free_all(pub);
+	free(pri_key);
+	//
+}
