@@ -152,7 +152,7 @@ void* SomeAwesomeThings(void* Param){
 					break;
 			}
 			if(ClientCounter != NULL){
-				if((encrypt_len = RSA_public_encrypt(strlen(ClientCounter->public_key), (unsigned char*)ClientCounter->public_key, (unsigned char*)encrypt, ClientCounter->keypair, RSA_PKCS1_OAEP_PADDING))  = -1){
+				if((encrypt_len = RSA_public_encrypt(strlen(ClientCounter->public_key), (unsigned char*)ClientCounter->public_key, (unsigned char*)encrypt, ClientCounter->keypair, RSA_PKCS1_OAEP_PADDING)) == -1){
 					ERR_load_crypto_strings();
 					ERR_error_string(ERR_get_error(), err);
 					fprintf(stderr, "Error decrypting message: %s\n", err);
@@ -227,7 +227,7 @@ int main(int argc, char **argv)
         printf("New user has connected\n");
         Client* newClient = (Client*) malloc(sizeof(Client));
         newClient->sockfd = connfd;
-		newClient->public_key_encrypted = (char*) malloc(RSA_size(keypair));
+		newClient->public_key = (char*) malloc(RSA_size(keypair));
 
         if(head == NULL){
             head = newClient;
@@ -251,6 +251,13 @@ int main(int argc, char **argv)
 
 void InitRSA(){
 	//Generating RSA key
+
+	FILE* private = fopen("./private.pem", "r");
+	FILE* public = fopen("./public.pem", "r");
+	PEM_read_RSAPrivateKey(private, &keypair, NULL, NULL);
+	PEM_read_RSAPublicKey(public, &keypair, NULL, NULL);
+	fclose(private);
+	fclose(public);
 	size_t pri_len;
 	size_t pub_len;
 	char *pri_key;
@@ -258,7 +265,6 @@ void InitRSA(){
 	char *err;
 	printf("Generating RSA (%d bits) keypair...\n", KEY_LENGTH);
 	fflush(stdout);
-	keypair = RSA_generate_key_ex(KEY_LENGTH, PUB_EXP, NULL, NULL);
 
 	// To get C-string PEM form
 	BIO *pri = BIO_new(BIO_s_mem());
