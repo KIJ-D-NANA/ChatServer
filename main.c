@@ -17,6 +17,7 @@ typedef struct Client{
     char Name[256];
     int sockfd;
 	char* public_key;
+	RSA* keypair;
     struct Client* Next;
     struct Client* Previous;
 }Client;
@@ -33,6 +34,7 @@ void* SomeAwesomeThings(void* Param){
     Client* theClient = (Client*)Param;
     char message[4086];
     char sendMessage[4086];
+	char encrypt[RSA_size(keypair)];
     char* receiver;
     char* tmp;
 	char* err;
@@ -124,7 +126,7 @@ void* SomeAwesomeThings(void* Param){
 
 			write(theClient->sockfd, sendMessage, sizeof(sendMessage));
 		}
-		else if(strcmp(message, "Mode: ClientPubKey") == 0){
+		else if(strcmp(message, "Mode: SetPubKey") == 0){
 			tmp = tmp + 2;
 			nameLength = strstr(tmp, "\r\n.\r\n") - tmp;
 			if((decrypt_len = RSA_private_decrypt(nameLength, (unsigned char*)tmp, (unsigned char*)theClient->public_key, keypair, RSA_PKCS1_OAEP_PADDING)) == -1){
@@ -134,8 +136,34 @@ void* SomeAwesomeThings(void* Param){
 			}
 			else{
 				theClient->public_key[decrypt_len] = '\0';
+				BIO* bufio = BIO_new_mem_buf((void*)theClient->public_key, decrypt_len);
+				PEM_read_bio_RSAPublicKey(bufio, &(theClient->keypair), 0, NULL);
+				BIO_free_all(bufio);
 			}
 		}
+		else if(strcmp(message, "Mode: GetPubKey") == 0){
+			tmp = tmp + 2;
+			tmp = strstr(tmp, " ") + 1;
+			receiver = tmp;
+			tmp = strstr(tmp, "\r\n");
+			*tmp = '\0';
+			for(ClientCounter = head; ClientCounter != NULL; ClientCounter = ClientCounter->Next){
+				if(strcmp(receiver, ClientCounter->Name) == 0)
+					break;
+			}
+			if(ClientCounter != NULL){
+				if((encrypt_len = RSA_public_encrypt(strlen(ClientCounter->public_key), (unsigned char*)ClientCounter->public_key, (unsigned char*)encrypt, ClientCounter->keypair, RSA_PKCS1_OAEP_PADDING))  = -1){
+					ERR_load_crypto_strings();
+					ERR_error_string(ERR_get_error(), err);
+					fprintf(stderr, "Error decrypting message: %s\n", err);
+				}
+				else{
+					encrypt_len = RSA_private_encrypt(encrypt_len, (unsigned char*)encrypt, (unsigned char*)message, keypair, RSA_PKCS1_PADDING);
+					message[encrypt_len] = '\0';
+					sprintf(sendMessage, "Mode: ClientPubKey\r\nUser: %s\r\n%s\r\n.\r\n", ClientCounter->Name, message);
+					write(theClient->sockfd, sendMessage, sizeof(sendMessage));
+				}
+			}
     }
 
     printf("%s has been disconnected\n", theClient->Name);
@@ -149,6 +177,8 @@ void* SomeAwesomeThings(void* Param){
             tail = theClient->Previous;
         }
     }
+	free(theClient->public_key);
+	RSA_free(theClient->keypair);
     free(theClient);
 
     return NULL;
@@ -196,11 +226,11 @@ int main(int argc, char **argv)
         printf("New user has connected\n");
         Client* newClient = (Client*) malloc(sizeof(Client));
         newClient->sockfd = connfd;
-		newClient->public_key_encrypted = NULL;
+		newClient->public_key_encrypted = (char*) malloc(RSA_size(keypair));
 
         if(head == NULL){
             head = newClient;
-			newClient->Previous = (char*) malloc(RSA_size(keypair));
+			newClient->Previous = NULL;
         }
         else{
             tail->Next = newClient;
