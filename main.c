@@ -77,7 +77,7 @@ void* SomeAwesomeThings(void* Param){
                 write(ClientCounter->sockfd, sendMessage, sizeof(sendMessage));
             }
         }
-        else if(strcmp(message, "Mode: Private") == 0){
+        else if((strcmp(message, "Mode: Private") == 0) || (strcmp(message, "Mode: InitPriv") == 0) || (strcmp(message, "Mode: AccPriv") == 0) ){
 
             tmp = tmp + 2;
             tmp = strstr(tmp, " ") + 1;
@@ -164,6 +164,7 @@ void* SomeAwesomeThings(void* Param){
 					write(theClient->sockfd, sendMessage, sizeof(sendMessage));
 				}
 			}
+		}
     }
 
     printf("%s has been disconnected\n", theClient->Name);
