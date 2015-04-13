@@ -152,16 +152,22 @@ void* SomeAwesomeThings(void* Param){
 					break;
 			}
 			if(ClientCounter != NULL){
-				if((encrypt_len = RSA_public_encrypt(strlen(ClientCounter->public_key), (unsigned char*)ClientCounter->public_key, (unsigned char*)encrypt, ClientCounter->keypair, RSA_PKCS1_OAEP_PADDING)) == -1){
-					ERR_load_crypto_strings();
-					ERR_error_string(ERR_get_error(), err);
-					fprintf(stderr, "Error decrypting message: %s\n", err);
+				if(ClientCounter->public_key[0] != '\0'){
+					if((encrypt_len = RSA_public_encrypt(strlen(ClientCounter->public_key), (unsigned char*)ClientCounter->public_key, (unsigned char*)encrypt, ClientCounter->keypair, RSA_PKCS1_OAEP_PADDING)) == -1){
+						ERR_load_crypto_strings();
+						ERR_error_string(ERR_get_error(), err);
+						fprintf(stderr, "Error decrypting message: %s\n", err);
+						sprintf(sendMessage, "Mode: FailPubKey\r\nUser: %s\r\n.\r\n", ClientCounter->Name);
+					}
+					else{
+						encrypt_len = RSA_private_encrypt(encrypt_len, (unsigned char*)encrypt, (unsigned char*)message, keypair, RSA_PKCS1_PADDING);
+						message[encrypt_len] = '\0';
+						sprintf(sendMessage, "Mode: ClientPubKey\r\nUser: %s\r\n%s\r\n.\r\n", ClientCounter->Name, message);
+						write(theClient->sockfd, sendMessage, sizeof(sendMessage));
+					}
 				}
 				else{
-					encrypt_len = RSA_private_encrypt(encrypt_len, (unsigned char*)encrypt, (unsigned char*)message, keypair, RSA_PKCS1_PADDING);
-					message[encrypt_len] = '\0';
-					sprintf(sendMessage, "Mode: ClientPubKey\r\nUser: %s\r\n%s\r\n.\r\n", ClientCounter->Name, message);
-					write(theClient->sockfd, sendMessage, sizeof(sendMessage));
+					sprintf(sendMessage, "Mode: FailPubKey\r\nUser: %s\r\n.\r\n", ClientCounter->Name);
 				}
 			}
 		}
@@ -228,6 +234,7 @@ int main(int argc, char **argv)
 		Client* newClient = (Client*) malloc(sizeof(Client));
 		newClient->sockfd = connfd;
 		newClient->public_key = (char*) malloc(RSA_size(keypair));
+		newClient->public_key[0] = '\0';
 
 		if(head == NULL){
 			head = newClient;
