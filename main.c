@@ -56,7 +56,7 @@ void* SomeAwesomeThings(void* Param){
 	key.iter2 = &iter2;
 	int RC4KeySet = 0;
 	//
-	char hash_out[20];
+	char hash_out[21];
 	int iterator;
 	memset(sendMessage, '\0', sizeof(sendMessage));
 	err = (char*) malloc(130);
@@ -209,19 +209,14 @@ void* SomeAwesomeThings(void* Param){
 					break;
 			}
 			if(ClientCounter != NULL){
-				if(ClientCounter->public_key[0] != '\0'){
-					if((encrypt_len = RSA_public_encrypt(strlen(ClientCounter->public_key), (unsigned char*)ClientCounter->public_key, (unsigned char*)encrypt, ClientCounter->keypair, RSA_PKCS1_OAEP_PADDING)) == -1){
-						ERR_load_crypto_strings();
-						ERR_error_string(ERR_get_error(), err);
-						fprintf(stderr, "Error decrypting message: %s\n", err);
-						sprintf(sendMessage, "Mode: FailPubKey\r\nUser: %s\r\n.\r\n", ClientCounter->Name);
-					}
-					else{
-						encrypt_len = RSA_private_encrypt(encrypt_len, (unsigned char*)encrypt, (unsigned char*)message, keypair, RSA_PKCS1_PADDING);
-						message[encrypt_len] = '\0';
-						sprintf(sendMessage, "Mode: ClientPubKey\r\nUser: %s\r\n%s\r\n.\r\n", ClientCounter->Name, message);
-						write(theClient->sockfd, sendMessage, sizeof(sendMessage));
-					}
+				if(ClientCounter->public_key[0] != '\0' && RC4KeySet == 1){
+					SHA1((unsigned char*)ClientCounter->public_key, strlen(ClientCounter->public_key), (unsigned char*)hash_out);
+					hash_out[20] = '\0';
+					sprintf(sendMessage, "%s\r\n\r\n%s", ClientCounter->public_key, hash_out);
+					encrypt_len = RC4Crypt(strlen(sendMessage), (unsigned char*)sendMessage, (unsigned char*)encrypt, &RC4key);
+					encrypt[encrypt_len] = '\0';
+					sprintf(sendMessage, "Mode: ClientPubKey\r\nUser: %s\r\n%s\r\n.\r\n", ClientCounter->Name, encrypt);
+					write(theClient->sockfd, sendMessage, sizeof(sendMessage));
 				}
 				else{
 					sprintf(sendMessage, "Mode: FailPubKey\r\nUser: %s\r\n.\r\n", ClientCounter->Name);
