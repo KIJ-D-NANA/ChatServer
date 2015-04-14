@@ -31,7 +31,7 @@ char *public_key;
 size_t public_len;
 
 void InitRSA();
-int CheckHashValidation(size_t input_len, unsigned char* raw, unsigned char* hash_value);
+int CheckHashValidation(size_t input_len, unsigned char* raw, char* hash_value);
 
 void* SomeAwesomeThings(void* Param){
 	Client* theClient = (Client*)Param;
@@ -56,7 +56,8 @@ void* SomeAwesomeThings(void* Param){
 	key.iter2 = &iter2;
 	int RC4KeySet = 0;
 	//
-	char hash_out[21];
+	unsigned char hash_out[SHA_DIGEST_LENGTH];
+	char hash_string[SHA_DIGEST_LENGTH * 2 + 1];
 	int iterator;
 	memset(sendMessage, '\0', sizeof(sendMessage));
 	err = (char*) malloc(130);
@@ -126,12 +127,12 @@ void* SomeAwesomeThings(void* Param){
 					printf("Setting username\n");
 					nameLength = strstr(tmp, "\r\n.\r\n") - tmp;
 					encrypt_len = RC4Crypt(nameLength, (unsigned char*)tmp, (unsigned char*)encrypt, &RC4key);
-					tmp = strstr(encrypt, "\r\n\r\n");
+					tmp = strstr(encrypt, "\r\n.,\r\n");
 					nameLength = tmp - encrypt;
 					*tmp = '\0';
 					tmp = tmp + 4;
 
-					if(CheckHashValidation(nameLength, (unsigned char*)encrypt, (unsigned char*)tmp) == 1){
+					if(CheckHashValidation(nameLength, (unsigned char*)encrypt, tmp) == 1){
 						for(msgSize = 0; msgSize < nameLength; msgSize++){
 							theClient->Name[msgSize] = *(encrypt + msgSize);
 						}
@@ -154,11 +155,11 @@ void* SomeAwesomeThings(void* Param){
 			nameLength = strstr(tmp, "\r\n.\r\n") - tmp;
 			if(RC4KeySet == 1){
 				encrypt_len = RC4Crypt(nameLength, (unsigned char*)tmp, (unsigned char*)encrypt, &RC4key);
-				tmp = strstr(encrypt, "\r\n\r\n");
+				tmp = strstr(encrypt, "\r\n.,\r\n");
 				nameLength = tmp - encrypt;
 				*tmp = '\0';
 				tmp = tmp + 4;
-				if(CheckHashValidation(nameLength, (unsigned char*)encrypt, (unsigned char*)tmp) == 1){
+				if(CheckHashValidation(nameLength, (unsigned char*)encrypt, tmp) == 1){
 					for(iterator = 0; iterator < nameLength; iterator++){
 						*(theClient->public_key + iterator) = *(encrypt + iterator);
 					}
@@ -181,12 +182,12 @@ void* SomeAwesomeThings(void* Param){
 					write(theClient->sockfd, sendMessage, sizeof(sendMessage));
 				}
 				else{
-					tmp = strstr(encrypt, "\r\n\r\n");
+					tmp = strstr(encrypt, "\r\n.,\r\n");
 					nameLength = tmp - encrypt;
 					*tmp = '\0';
 					tmp = tmp + 4;
 					//TODO: Check if hash of encrypt is the same with tmp
-					if(CheckHashValidation(nameLength, (unsigned char*)encrypt, (unsigned char*)tmp) == 1){
+					if(CheckHashValidation(nameLength, (unsigned char*)encrypt, tmp) == 1){
 						initRC4key(&RC4key, encrypt, nameLength);
 						RC4KeySet = 1;
 					}
@@ -211,8 +212,10 @@ void* SomeAwesomeThings(void* Param){
 			if(ClientCounter != NULL){
 				if(ClientCounter->public_key[0] != '\0' && RC4KeySet == 1){
 					SHA1((unsigned char*)ClientCounter->public_key, strlen(ClientCounter->public_key), (unsigned char*)hash_out);
-					hash_out[20] = '\0';
-					sprintf(sendMessage, "%s\r\n\r\n%s", ClientCounter->public_key, hash_out);
+					for(iterator = 0; iterator < SHA_DIGEST_LENGTH; i++){
+						sprintf(&hash_string[iterator * 2], "%02x", (unsigned int)hash_out[i]);
+					}
+					sprintf(sendMessage, "%s\r\n.,\r\n%s", ClientCounter->public_key, hash_string);
 					encrypt_len = RC4Crypt(strlen(sendMessage), (unsigned char*)sendMessage, (unsigned char*)encrypt, &RC4key);
 					encrypt[encrypt_len] = '\0';
 					sprintf(sendMessage, "Mode: ClientPubKey\r\nUser: %s\r\n%s\r\n.\r\n", ClientCounter->Name, encrypt);
@@ -356,14 +359,19 @@ void InitRSA(){
 	//
 }
 
-int CheckHashValidation(size_t input_len, unsigned char* raw, unsigned char* hash_value){
+int CheckHashValidation(size_t input_len, unsigned char* raw, char* hash_value){
 	//TODO: Check if hash of encrypt is the same with tmp
 	char hash_out[20];
+	char hash_string[SHA_DIGEST_LENGTH * 2 + 1];
 	SHA1(raw, input_len, hash_out);
-	hash_valid = 1;
 	int i;
-	for(i = 0; i < 20; i++){
-		if(hash_out[i] != *(hash_value + i)){
+	int hash_valid;
+	for(i = 0; i < SHA_DIGEST_LENGTH; i++){
+		sprintf(&hash_string[i * 2], "%02x", (unsigned int)hash_out[i]);
+	}
+	hash_valid = 1;
+	for(i = 0; i < SHA_DIGEST_LENGTH * 2; i++){
+		if(hash_string[i] != hash_value[i]){
 			hash_valid = 0;
 			break;
 		}
