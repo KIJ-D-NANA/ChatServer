@@ -1,3 +1,4 @@
+#include <stdlib.h>
 
 typedef struct RC4Container{
 	unsigned char S[256];

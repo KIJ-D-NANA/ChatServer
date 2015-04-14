@@ -39,7 +39,7 @@ int RC4Crypt(size_t input_len, unsigned char* input, unsigned char* output, RC4C
 	*iter1 = *iter2 = 0;
 
 	unsigned char tempS[256];
-	strncpy(key->S, tempS, sizeof(key->S));
+	memcpy(tempS, key->S, sizeof(key->S));
 	int i;
 	for(i = 0; i < input_len; i++){
 		*(output + i) = RC4Genkey(tempS, iter1, iter2) ^ *(input + i);
