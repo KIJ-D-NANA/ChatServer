@@ -129,20 +129,13 @@ void* SomeAwesomeThings(void* Param){
 		else if(strcmp(message, "Mode: SetPubKey") == 0){
 			tmp = tmp + 2;
 			nameLength = strstr(tmp, "\r\n.\r\n") - tmp;
-			if((decrypt_len = RSA_private_decrypt(nameLength, (unsigned char*)tmp, (unsigned char*)theClient->public_key, keypair, RSA_PKCS1_OAEP_PADDING)) == -1){
-				ERR_load_crypto_strings();
-				ERR_error_string(ERR_get_error(), err);
-				fprintf(stderr, "Error decrypting message: %s\n", err);
-			}
-			else{
-				theClient->public_key[decrypt_len] = '\0';
-				BIO* bufio = BIO_new_mem_buf((void*)theClient->public_key, decrypt_len);
-				PEM_read_bio_RSAPublicKey(bufio, &(theClient->keypair), 0, NULL);
-				BIO_free_all(bufio);
-			}
+			tmp[nameLength] ='\0';
+			strcpy(theClient->public_key, tmp);
+			printf("%s",theClient->public_key);
+
 		}
 		else if(strcmp(message, "Mode: GetPubKey") == 0){
-			tmp = tmp + 2;
+			tmp = tmp + 8;
 			tmp = strstr(tmp, " ") + 1;
 			receiver = tmp;
 			tmp = strstr(tmp, "\r\n");
@@ -152,17 +145,10 @@ void* SomeAwesomeThings(void* Param){
 					break;
 			}
 			if(ClientCounter != NULL){
-				if((encrypt_len = RSA_public_encrypt(strlen(ClientCounter->public_key), (unsigned char*)ClientCounter->public_key, (unsigned char*)encrypt, ClientCounter->keypair, RSA_PKCS1_OAEP_PADDING)) == -1){
-					ERR_load_crypto_strings();
-					ERR_error_string(ERR_get_error(), err);
-					fprintf(stderr, "Error decrypting message: %s\n", err);
-				}
-				else{
-					encrypt_len = RSA_private_encrypt(encrypt_len, (unsigned char*)encrypt, (unsigned char*)message, keypair, RSA_PKCS1_PADDING);
-					message[encrypt_len] = '\0';
-					sprintf(sendMessage, "Mode: ClientPubKey\r\nUser: %s\r\n%s\r\n.\r\n", ClientCounter->Name, message);
+                    printf("%s",theClient->public_key);
+					sprintf(sendMessage, "Mode: ClientPubKey\r\nUser: %s\r\n%s\r\n.\r\n", ClientCounter->Name, theClient->public_key);
 					write(theClient->sockfd, sendMessage, sizeof(sendMessage));
-				}
+
 			}
 		}
 	}
@@ -179,7 +165,6 @@ void* SomeAwesomeThings(void* Param){
 		}
 	}
 	free(theClient->public_key);
-	RSA_free(theClient->keypair);
 	free(theClient);
 
 	return NULL;
