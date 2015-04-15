@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-c -Wall
-LDFLAGS=-lcrypto
+LDFLAGS=-lcrypto -lpthread
 SOURCES=main.c rc4encryption.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=server
@@ -8,7 +8,7 @@ EXECUTABLE=server
 all: $(SOURCES) $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
+	$(CC) -o $@  $(OBJECTS) $(LDFLAGS)
 
 .c.o:
 	$(CC) $(CFLAGS) $< -o $@
