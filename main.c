@@ -18,7 +18,7 @@
 typedef struct Client{
 	char Name[256];
 	int sockfd;
-	char* public_key;
+	char public_key[2048];
 	RSA* keypair;
 	struct Client* Next;
 	struct Client* Previous;
@@ -239,8 +239,8 @@ void* SomeAwesomeThings(void* Param){
 			tail = theClient->Previous;
 		}
 	}
-	free(theClient->public_key);
-	RSA_free(theClient->keypair);
+	if(theClient->keypair != NULL)
+		RSA_free(theClient->keypair);
 	free(theClient);
 
 	return NULL;
@@ -288,8 +288,9 @@ int main(int argc, char **argv)
 		printf("New user has connected\n");
 		Client* newClient = (Client*) malloc(sizeof(Client));
 		newClient->sockfd = connfd;
-		newClient->public_key = (char*) malloc(2048);
 		newClient->public_key[0] = '\0';
+		strcpy(newClient->Name, "");
+		newClient->keypair = NULL;
 
 		if(head == NULL){
 			head = newClient;
