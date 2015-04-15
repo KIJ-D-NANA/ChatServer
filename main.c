@@ -5,11 +5,8 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <pthread.h>
-#include <openssl/rsa.h>
-#include <openssl/pem.h>
-#include <openssl/err.h>
-#include <openssl/sha.h>
 #include "rc4encryption.h"
+#include "RSACrypto.h"
 
 #define KEY_LENGTH 2048
 #define PUB_EXP 3
@@ -26,9 +23,8 @@ typedef struct Client{
 
 Client* head;
 Client* tail;
-RSA *keypair;
 char *public_key;
-size_t public_len;
+char *private_key;
 
 void InitRSA();
 int CheckHashValidation(size_t input_len, unsigned char* raw, char* hash_value);
@@ -155,6 +151,7 @@ void* SomeAwesomeThings(void* Param){
 			nameLength = strstr(tmp, "\r\n.\r\n") - tmp;
 			if(RC4KeySet == 1){
 				encrypt_len = RC4Crypt(nameLength, (unsigned char*)tmp, (unsigned char*)encrypt, &RC4key);
+				encrypt[encrypt_len] = '\0';
 				tmp = strstr(encrypt, "\r\n.,\r\n");
 				nameLength = tmp - encrypt;
 				*tmp = '\0';
@@ -174,7 +171,7 @@ void* SomeAwesomeThings(void* Param){
 			if(RC4KeySet == 0){
 				tmp = tmp + 2;
 				nameLength = strstr(tmp, "\r\n.\r\n") - tmp;
-				if((encrypt_len = RSA_private_decrypt(nameLength, (unsigned char*)tmp, (unsigned char*)encrypt, keypair, RSA_PKCS1_OAEP_PADDING)) == -1){
+				if((encrypt_len = private_decrypt((unsigned char*)tmp, nameLength, (unsigned char*)private_key, (unsigned char*)encrypt, RSA_PKCS1_OAEP_PADDING)) == -1){
 					ERR_load_crypto_strings();
 					ERR_error_string(ERR_get_error(), err);
 					fprintf(stderr, "Error decrypting message: %s\n", err);
@@ -196,7 +193,10 @@ void* SomeAwesomeThings(void* Param){
 						write(theClient->sockfd, sendMessage, sizeof(sendMessage));
 					}
 				}
-
+				else{
+					sprintf(sendMessage, "Mode: FailRC4Key\r\n.\r\n");
+					write(theClient->sockfd, sendMessage, sizeof(sendMessage));
+				}
 			}
 		}
 		else if(strcmp(message, "Mode: GetPubKey") == 0){
@@ -306,58 +306,33 @@ int main(int argc, char **argv)
 		pthread_t clientThread;
 		pthread_create(&clientThread, NULL, SomeAwesomeThings, (void*)newClient);
 	}
-	RSA_free(keypair);
+	/*RSA_free(keypair);*/
 	free(public_key);
+	free(private_key);
 
 	return 0;
 }
 
 void InitRSA(){
 	//Generating RSA key
+	size_t file_size;
+	FILE* private_key_file = fopen("./private.pem", "r");
+	FILE* public_key_file = fopen("./public.pem", "r");
 
-	FILE* private_key = fopen("./private.pem", "r");
-	FILE* public_key = fopen("./public.pem", "r");
-	PEM_read_RSAPrivateKey(private_key, &keypair, NULL, NULL);
-	PEM_read_RSAPublicKey(public_key, &keypair, NULL, NULL);
-	fclose(private_key);
-	fclose(public_key);
-	size_t pri_len;
-	size_t pub_len;
-	char *pri_key;
-	char *pub_key;
-	char *err;
-	printf("Generating RSA (%d bits) keypair...\n", KEY_LENGTH);
-	fflush(stdout);
+	fseek(private_key_file, 0, SEEK_END);
+	file_size = ftell(private_key_file);
+	fseek(private_key_file, 0, SEEK_SET);
+	private_key = (char*)malloc(file_size + 1);
+	file_size = fread(private_key, 1, file_size, private_key_file);
+	fclose(private_key_file);
 
-	// To get C-string PEM form
-	BIO *pri = BIO_new(BIO_s_mem());
-	BIO *pub = BIO_new(BIO_s_mem());
 
-	PEM_write_bio_RSAPrivateKey(pri, keypair, NULL, NULL, 0, NULL, NULL);
-	PEM_write_bio_RSAPublicKey(pub, keypair);
-
-	pri_len = BIO_pending(pri);
-	pub_len = BIO_pending(pub);
-
-	pri_key = (char*) malloc(pri_len + 1);
-	pub_key = (char*) malloc(pub_len + 1);
-
-	BIO_read(pri, pri_key, pri_len);
-	BIO_read(pub, pub_key, pub_len);
-
-	pri_key[pri_len] = '\0';
-	pub_key[pub_len] = '\0';
-	public_key = pub_key;
-	public_len = pub_len;
-
-#ifdef PRINT_KEYS
-	printf("%s\n%s\n", pri_key, pub_key);
-#endif
-	printf("done.\n");
-	BIO_free_all(pri);
-	BIO_free_all(pub);
-	free(pri_key);
-	//
+	fseek(public_key_file, 0, SEEK_END);
+	file_size = ftell(public_key_file);
+	fseek(public_key_file, 0, SEEK_SET);
+	public_key = (char*)malloc(file_size + 1);
+	file_size = fread(public_key, 1, file_size, public_key_file);
+	fclose(public_key_file);
 }
 
 int CheckHashValidation(size_t input_len, unsigned char* raw, char* hash_value){
