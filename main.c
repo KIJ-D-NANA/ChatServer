@@ -130,7 +130,7 @@ void* SomeAwesomeThings(void* Param){
 					tmp = strstr(encrypt, "\r\n.,\r\n");
 					nameLength = tmp - encrypt;
 					*tmp = '\0';
-					tmp = tmp + 4;
+					tmp = tmp + 6;
 
 					if(CheckHashValidation(nameLength, (unsigned char*)encrypt, tmp) == 1){
 						for(msgSize = 0; msgSize < nameLength; msgSize++){
@@ -158,7 +158,7 @@ void* SomeAwesomeThings(void* Param){
 				tmp = strstr(encrypt, "\r\n.,\r\n");
 				nameLength = tmp - encrypt;
 				*tmp = '\0';
-				tmp = tmp + 4;
+				tmp = tmp + 6;
 				if(CheckHashValidation(nameLength, (unsigned char*)encrypt, tmp) == 1){
 					for(iterator = 0; iterator < nameLength; iterator++){
 						*(theClient->public_key + iterator) = *(encrypt + iterator);
@@ -185,7 +185,7 @@ void* SomeAwesomeThings(void* Param){
 					tmp = strstr(encrypt, "\r\n.,\r\n");
 					nameLength = tmp - encrypt;
 					*tmp = '\0';
-					tmp = tmp + 4;
+					tmp = tmp + 6;
 					//TODO: Check if hash of encrypt is the same with tmp
 					if(CheckHashValidation(nameLength, (unsigned char*)encrypt, tmp) == 1){
 						initRC4key(&RC4key, encrypt, nameLength);
