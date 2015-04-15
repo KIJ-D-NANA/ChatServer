@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <pthread.h>
+#include <openssl/sha.h>
 #include "rc4encryption.h"
 #include "RSACrypto.h"
 
@@ -193,10 +194,7 @@ void* SomeAwesomeThings(void* Param){
 						write(theClient->sockfd, sendMessage, sizeof(sendMessage));
 					}
 				}
-				else{
-					sprintf(sendMessage, "Mode: FailRC4Key\r\n.\r\n");
-					write(theClient->sockfd, sendMessage, sizeof(sendMessage));
-				}
+
 			}
 		}
 		else if(strcmp(message, "Mode: GetPubKey") == 0){
@@ -333,6 +331,7 @@ void InitRSA(){
 	public_key = (char*)malloc(file_size + 1);
 	file_size = fread(public_key, 1, file_size, public_key_file);
 	fclose(public_key_file);
+    printf("%s\n\n%s\n\n", private_key, public_key);
 }
 
 int CheckHashValidation(size_t input_len, unsigned char* raw, char* hash_value){

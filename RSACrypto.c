@@ -1,6 +1,7 @@
 #include "RSACrypto.h"
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
+#include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
@@ -19,7 +20,7 @@ RSA* createRSA(unsigned char* key, int is_public){
 		rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa, NULL, NULL);
 	}
 	else{
-		rsa = PEM_read_bio_RSA_PrivateKey(keybio, &rsa, NULL, NULL);
+        rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa, NULL, NULL);
 	}
 
 	if(rsa == NULL){
