@@ -323,6 +323,7 @@ void InitRSA(){
 	private_key = (char*)malloc(file_size + 1);
 	file_size = fread(private_key, 1, file_size, private_key_file);
 	fclose(private_key_file);
+    private_key[file_size] = '\0';
 
 
 	fseek(public_key_file, 0, SEEK_END);
@@ -331,6 +332,7 @@ void InitRSA(){
 	public_key = (char*)malloc(file_size + 1);
 	file_size = fread(public_key, 1, file_size, public_key_file);
 	fclose(public_key_file);
+    public_key[file_size] = '\0';
     printf("%s\n\n%s\n\n", private_key, public_key);
 }
 

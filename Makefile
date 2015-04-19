@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-c -Wall
 LDFLAGS=-lcrypto -lpthread
-SOURCES=main.c rc4encryption.c RSACrypto.c
+SOURCES=main.c rc4encryption.c RSACrypto.c Base64.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=server
 

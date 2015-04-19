@@ -53,7 +53,7 @@ int private_encrypt(unsigned char* data, int data_len, unsigned char* key, unsig
 }
 
 int private_decrypt(unsigned char* data, int data_len, unsigned char* key, unsigned char* decrypted, int padding){
-	RSA* rsa = createRSA(key, 1);
+    RSA* rsa = createRSA(key, 0);
 	int result = RSA_private_decrypt(data_len, data, decrypted, rsa, padding);
 	RSA_free(rsa);
 	return result;
