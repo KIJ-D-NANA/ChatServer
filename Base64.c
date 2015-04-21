@@ -11,7 +11,7 @@ int Base64encode(const unsigned char* buffer, int length, char** base64_text){
 
 	b64 = BIO_new(BIO_f_base64());
 	bio = BIO_new(BIO_s_mem());
-	bio = BIO_psh(b64, bio);
+	bio = BIO_push(b64, bio);
 
 	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
 	BIO_write(bio, buffer, length);
