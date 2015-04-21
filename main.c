@@ -90,7 +90,9 @@ void* SomeAwesomeThings(void* Param){
 			if(strcmp(message, "Mode: Public") == 0){
 
 				tmp = tmp + 2;
-				sprintf(sendMessage,"%s\r\nUser: %s\r\n%s", message, theClient->Name, tmp);
+				nameLength = strstr(tmp, "\r\n.\r\n") - tmp + 5;
+				sprintf(sendMessage,"%s\r\nUser: %s\r\n", message, theClient->Name);
+				strncat(sendMessage, tmp, nameLength);
 
 				for(ClientCounter = head; ClientCounter != NULL; ClientCounter = ClientCounter->Next){
 					if(ClientCounter == theClient) continue;
@@ -105,8 +107,10 @@ void* SomeAwesomeThings(void* Param){
 				tmp = strstr(tmp, "\r\n");
 				*tmp = '\0';
 				tmp = tmp + 2;
+				nameLength = strstr(tmp, "\r\n.\r\n") - tmp + 5;
 
-				sprintf(sendMessage,"%s\r\nUser: %s\r\n%s", message, theClient->Name, tmp);
+				sprintf(sendMessage,"%s\r\nUser: %s\r\n", message, theClient->Name);
+				strncat(sendMessage, tmp, nameLength);
 
 				for(ClientCounter = head; ClientCounter != NULL; ClientCounter = ClientCounter->Next){
 					if(strcmp(receiver, ClientCounter->Name) == 0){
