@@ -18,7 +18,7 @@ int Base64encode(const unsigned char* buffer, int length, char** base64_text){
 	BIO_flush(bio);
 	BIO_get_mem_ptr(bio, &bufferPtr);
 
-	*base64_text = (char*)malloc(bufferPtr->length);
+	*base64_text = (char*)malloc(bufferPtr->length + 1);
 	memcpy(*base64_text, bufferPtr->data, bufferPtr->length);
 	int length2 = bufferPtr->length;
 

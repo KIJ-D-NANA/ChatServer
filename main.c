@@ -55,7 +55,7 @@ void* SomeAwesomeThings(void* Param){
 	RC4key.iter2 = &iter2;
 	int RC4KeySet = 0;
 	//
-	unsigned char hash_out[SHA_DIGEST_LENGTH];
+	unsigned char hash_out[SHA_DIGEST_LENGTH + 1];
 	char hash_string[SHA_DIGEST_LENGTH * 2 + 1];
 	int iterator;
 	memset(sendMessage, '\0', sizeof(sendMessage));
@@ -238,7 +238,13 @@ void* SomeAwesomeThings(void* Param){
 						sprintf(sendMessage, "%s\r\n.,\r\n%s", ClientCounter->public_key, hash_string);
 						encrypt_len = RC4Crypt(strlen(sendMessage), (unsigned char*)sendMessage, (unsigned char*)encrypt, &RC4key);
 						encrypt[encrypt_len] = '\0';
-						sprintf(sendMessage, "Mode: ClientPubKey\r\nUser: %s\r\n%s\r\n.\r\n", ClientCounter->Name, encrypt);
+						char* encoded;
+						int encoded_len = Base64encode(encrypt, encrypt_len, &encoded);
+						encoded[encoded_len] = '\0';
+						sprintf(sendMessage, "Mode: ClientPubKey\r\nUser: %s\r\n%s\r\n.\r\n", ClientCounter->Name, encoded);
+						free(encoded);
+						printf("%s\n", sendMessage);
+						printf("%s\n", ClientCounter->public_key);
 						write(theClient->sockfd, sendMessage, sizeof(sendMessage));
 					}
 					else{
@@ -247,6 +253,7 @@ void* SomeAwesomeThings(void* Param){
 				}
 			}
 
+			*ender = '\0';
 			ender += 5;
 			message = ender;
 		}
@@ -256,6 +263,7 @@ void* SomeAwesomeThings(void* Param){
 	if(theClient == head){
 		head = theClient->Next;
 		if(head != NULL)head->Previous = NULL;
+		else tail = NULL;
 	}
 	else{
 		theClient->Previous->Next = theClient->Next;
